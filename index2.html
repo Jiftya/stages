@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stage</title>
+<script src="https://unpkg.com/@daily-co/daily-js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0e0e11;
+  --surface: #18181f;
+  --surface2: #21212b;
+  --border: rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.13);
+  --text: #f0f0f4;
+  --muted: #7a7a8c;
+  --accent: #7c6aff;
+  --accent2: #a78bfa;
+  --green: #34d399;
+  --red: #f87171;
+  --amber: #fbbf24;
+  --mono: 'DM Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--sans); font-size: 15px; }
+
+/* ── LOBBY ── */
+#lobby {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124,106,255,0.12) 0%, transparent 70%);
+}
+.lobby-card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  padding: 2.5rem 2rem;
+}
+.lobby-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 2rem;
+}
+.logo-icon {
+  width: 36px; height: 36px;
+  background: var(--accent);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-icon svg { width: 18px; height: 18px; fill: #fff; }
+.logo-text { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+.lobby-heading { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: .4rem; }
+.lobby-sub { font-size: 13px; color: var(--muted); margin-bottom: 2rem; line-height: 1.5; }
+label { display: block; font-size: 12px; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: .04em; text-transform: uppercase; }
+input[type=text] {
+  width: 100%; padding: 10px 14px;
+  background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 10px; color: var(--text); font-family: var(--sans); font-size: 14px;
+  outline: none; margin-bottom: 1rem; transition: border-color .2s;
+}
+input[type=text]:focus { border-color: var(--accent); }
+.role-row { display: flex; gap: 8px; margin-bottom: 1.5rem; }
+.role-btn {
+  flex: 1; padding: 10px; border-radius: 10px;
+  border: 1px solid var(--border2); background: var(--surface2);
+  color: var(--muted); font-family: var(--sans); font-size: 13px;
+  cursor: pointer; transition: all .2s; text-align: center;
+}
+.role-btn.active { border-color: var(--accent); color: var(--accent2); background: rgba(124,106,255,.12); }
+.join-btn {
+  width: 100%; padding: 12px; border-radius: 12px;
+  background: var(--accent); border: none; color: #fff;
+  font-family: var(--sans); font-size: 15px; font-weight: 500;
+  cursor: pointer; transition: opacity .2s;
+}
+.join-btn:hover { opacity: .88; }
+.join-btn:disabled { opacity: .4; cursor: not-allowed; }
+.error-msg { font-size: 13px; color: var(--red); margin-top: 1rem; display: none; }
+
+/* ── APP SHELL ── */
+#app { display: none; height: 100vh; flex-direction: column; }
+
+/* header */
+.app-header {
+  display: flex; align-items: center; gap: 12px;
+  padding: 0 20px; height: 52px; flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+.app-header .logo-icon { width: 28px; height: 28px; border-radius: 8px; }
+.app-header .logo-icon svg { width: 14px; height: 14px; }
+.header-stage-name { font-size: 14px; font-weight: 500; }
+.live-badge {
+  font-size: 10px; font-weight: 600; letter-spacing: .08em;
+  padding: 3px 8px; border-radius: 999px;
+  background: rgba(52,211,153,.15); color: var(--green);
+  font-family: var(--mono);
+}
+.header-spacer { flex: 1; }
+.header-count { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+/* body */
+.app-body { display: flex; flex: 1; overflow: hidden; }
+
+/* sidebar */
+.sidebar {
+  width: 220px; flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow-y: auto; background: var(--surface);
+}
+.sidebar-section { padding: 16px 14px 6px; }
+.sidebar-label {
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 6px;
+}
+.participant-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: 8px;
+  transition: background .15s;
+}
+.participant-row:hover { background: var(--surface2); }
+.avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0; position: relative;
+}
+.avatar .speaking-ring {
+  position: absolute; inset: -2px; border-radius: 50%;
+  border: 2px solid var(--green); opacity: 0;
+  transition: opacity .2s;
+}
+.avatar.speaking .speaking-ring { opacity: 1; animation: pulse-ring 1.2s ease-in-out infinite; }
+@keyframes pulse-ring { 0%,100%{opacity:.7} 50%{opacity:.3} }
+.p-name { font-size: 13px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.p-badge {
+  font-size: 10px; padding: 2px 6px; border-radius: 999px;
+  font-family: var(--mono);
+}
+.badge-mod { background: rgba(124,106,255,.18); color: var(--accent2); }
+.badge-hand { background: rgba(251,191,36,.15); color: var(--amber); }
+.badge-muted { color: var(--muted); font-size: 13px; }
+
+/* main panel */
+.main-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+/* tabs */
+.tabs {
+  display: flex; gap: 2px; padding: 12px 16px 0;
+  border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.tab {
+  padding: 8px 14px; font-size: 13px; font-weight: 500;
+  border-radius: 8px 8px 0 0; cursor: pointer; color: var(--muted);
+  border-bottom: 2px solid transparent; transition: color .15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--text); border-bottom-color: var(--accent2); }
+
+/* panel content */
+.panel { display: none; flex: 1; overflow-y: auto; padding: 16px; gap: 12px; flex-direction: column; }
+.panel.active { display: flex; }
+
+/* cards */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; padding: 16px;
+}
+.card-heading {
+  font-size: 12px; font-weight: 600; letter-spacing: .05em;
+  text-transform: uppercase; color: var(--muted); margin-bottom: 12px;
+  display: flex; align-items: center; gap: 6px;
+}
+.card-heading svg { width: 14px; height: 14px; opacity: .6; }
+
+/* queue */
+.queue-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 10px;
+  background: var(--surface2); margin-bottom: 6px;
+}
+.queue-pos { font-size: 11px; font-family: var(--mono); color: var(--muted); width: 16px; }
+.queue-name { font-size: 13px; flex: 1; }
+.queue-time { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-right: 4px; }
+.action-btn {
+  font-size: 11px; padding: 4px 10px; border-radius: 8px;
+  border: 1px solid var(--border2); background: transparent; color: var(--text);
+  cursor: pointer; transition: background .15s; white-space: nowrap;
+}
+.action-btn:hover { background: var(--surface2); }
+.action-btn.approve { border-color: var(--accent); color: var(--accent2); }
+.action-btn.approve:hover { background: rgba(124,106,255,.12); }
+.action-btn.deny { border-color: rgba(248,113,113,.4); color: var(--red); }
+.action-btn.deny:hover { background: rgba(248,113,113,.08); }
+.empty-state { font-size: 13px; color: var(--muted); text-align: center; padding: 24px 0; }
+
+/* timer */
+.timer-big { font-size: 52px; font-weight: 300; font-family: var(--mono); text-align: center; letter-spacing: -.02em; padding: 8px 0 4px; }
+.timer-big.warning { color: var(--amber); }
+.timer-big.expired { color: var(--red); }
+.timer-speaker { font-size: 12px; color: var(--muted); text-align: center; margin-bottom: 14px; }
+.timer-progress { height: 3px; background: var(--surface2); border-radius: 999px; margin-bottom: 16px; overflow: hidden; }
+.timer-bar { height: 100%; background: var(--accent); border-radius: 999px; transition: width .5s linear, background .5s; }
+.timer-bar.warning { background: var(--amber); }
+.timer-bar.expired { background: var(--red); }
+.btn-row { display: flex; gap: 8px; }
+.btn-sm {
+  flex: 1; padding: 9px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border2); background: var(--surface2); color: var(--text);
+  cursor: pointer; transition: background .15s; font-family: var(--sans);
+}
+.btn-sm:hover { background: var(--border); }
+.btn-sm.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-sm.primary:hover { opacity: .88; }
+.btn-sm.danger { border-color: rgba(248,113,113,.4); color: var(--red); }
+.btn-sm.danger:hover { background: rgba(248,113,113,.08); }
+.limit-row { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+input[type=range] {
+  flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer;
+}
+.limit-val { font-family: var(--mono); font-size: 13px; color: var(--accent2); min-width: 40px; text-align: right; }
+
+/* polls */
+.poll-option-row { margin-bottom: 10px; }
+.poll-label-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+.poll-opt-text { font-size: 13px; }
+.poll-pct { font-size: 12px; font-family: var(--mono); color: var(--muted); }
+.poll-track { height: 8px; background: var(--surface2); border-radius: 999px; overflow: hidden; }
+.poll-fill { height: 100%; border-radius: 999px; transition: width .6s ease; }
+.poll-meta { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-top: 10px; }
+.new-poll-form input[type=text] { margin-bottom: 8px; }
+.add-opt-btn {
+  font-size: 12px; color: var(--accent2); background: none; border: none;
+  cursor: pointer; padding: 0; margin-bottom: 12px; font-family: var(--sans);
+}
+
+/* schedule */
+.event-item {
+  display: flex; gap: 12px; padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+.event-item:last-child { border-bottom: none; }
+.event-date-col { text-align: center; min-width: 44px; }
+.event-day { font-size: 20px; font-weight: 600; line-height: 1; font-family: var(--mono); }
+.event-mon { font-size: 10px; text-transform: uppercase; color: var(--muted); letter-spacing: .05em; }
+.event-info { flex: 1; }
+.event-name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+.event-detail { font-size: 12px; color: var(--muted); }
+.rsvp-btn {
+  font-size: 11px; padding: 4px 12px; border-radius: 8px; align-self: center;
+  border: 1px solid var(--border2); background: transparent; color: var(--muted);
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.rsvp-btn.on { border-color: var(--green); color: var(--green); background: rgba(52,211,153,.08); }
+
+/* footer bar */
+.footer-bar {
+  height: 64px; flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  padding: 0 20px; border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+.footer-user { display: flex; align-items: center; gap: 8px; margin-right: 8px; }
+.footer-username { font-size: 13px; font-weight: 500; }
+.footer-role { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+.footer-spacer { flex: 1; }
+.footer-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 500;
+  border: 1px solid var(--border2); background: var(--surface2); color: var(--text);
+  cursor: pointer; transition: all .15s; font-family: var(--sans);
+}
+.footer-btn:hover { background: var(--border); }
+.footer-btn.active { background: rgba(124,106,255,.18); border-color: var(--accent); color: var(--accent2); }
+.footer-btn.mic-on { background: rgba(52,211,153,.12); border-color: var(--green); color: var(--green); }
+.footer-btn.leave { border-color: rgba(248,113,113,.4); color: var(--red); }
+.footer-btn.leave:hover { background: rgba(248,113,113,.08); }
+.icon { width: 16px; height: 16px; }
+
+/* notification toast */
+.toast {
+  position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%) translateY(20px);
+  background: var(--surface2); border: 1px solid var(--border2);
+  padding: 10px 18px; border-radius: 10px; font-size: 13px;
+  opacity: 0; transition: all .3s; pointer-events: none; white-space: nowrap; z-index: 99;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  display: none; align-items: center; justify-content: center; z-index: 50;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 18px; padding: 24px; width: 380px; max-width: 95vw;
+}
+.modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+.modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+</style>
+</head>
+<body>
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div class="lobby-card">
+    <div class="lobby-logo">
+      <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div>
+      <span class="logo-text">Stage</span>
+    </div>
+    <div class="lobby-heading">Join a stage</div>
+    <div class="lobby-sub">Live voice with hand raise queue, speaker timers, polls, and scheduled events.</div>
+
+    <label>Your name</label>
+    <input type="text" id="username-input" placeholder="e.g. alex_dev" maxlength="24">
+
+    <label>Stage room</label>
+    <input type="text" id="room-input" placeholder="e.g. my-stage" maxlength="32">
+
+    <label>Join as</label>
+    <div class="role-row">
+      <div class="role-btn active" data-role="audience" onclick="selectRole(this)">👂 Audience</div>
+      <div class="role-btn" data-role="moderator" onclick="selectRole(this)">🎙 Moderator</div>
+    </div>
+
+    <button class="join-btn" id="join-btn" onclick="joinStage()">Join Stage</button>
+    <div class="error-msg" id="error-msg"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="app-header">
+    <div class="logo-icon"><svg viewBox="0 0 24 24" style="fill:#fff"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg></div>
+    <span class="header-stage-name" id="header-stage-name">—</span>
+    <span class="live-badge">LIVE</span>
+    <div class="header-spacer"></div>
+    <span class="header-count" id="header-count">0 listening</span>
+  </div>
+
+  <div class="app-body">
+    <!-- sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-label">Speakers</div>
+        <div id="speakers-list"></div>
+      </div>
+      <div class="sidebar-section">
+        <div class="sidebar-label">Audience</div>
+        <div id="audience-list"></div>
+      </div>
+    </div>
+
+    <!-- main panel -->
+    <div class="main-panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('queue',this)">Hand queue</div>
+        <div class="tab" onclick="switchTab('timer',this)">Speaker timer</div>
+        <div class="tab" onclick="switchTab('polls',this)">Polls</div>
+        <div class="tab" onclick="switchTab('schedule',this)">Schedule</div>
+      </div>
+
+      <!-- QUEUE PANEL -->
+      <div class="panel active" id="panel-queue">
+        <div class="card">
+          <div class="card-heading">
+            <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 2a1 1 0 011 1v1.5a.5.5 0 001 0V3a1 1 0 012 0v1.5a.5.5 0 001 0V3a1 1 0 012 0v4.5l.5.289A3 3 0 0117 10.5v3a5 5 0 01-10 0v-6a1 1 0 011-1h.001A1 1 0 018 5V3a1 1 0 011-1z"/></svg>
+            Raise queue
+          </div>
+          <div id="queue-list"><div class="empty-state">No hands raised yet</div></div>
+        </div>
+        <div class="card" id="mod-controls" style="display:none">
+          <div class="card-heading">Moderator controls</div>
+          <div class="btn-row">
+            <button class="btn-sm" onclick="muteAll()">Mute all</button>
+            <button class="btn-sm danger" onclick="clearQueue()">Clear queue</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-heading">How it works</div>
+          <p style="font-size:13px;color:var(--muted);line-height:1.6">Audience members tap <strong style="color:var(--text)">Raise hand</strong> below. Moderators see the queue in order and invite speakers. Invited users get the time limit set in the Timer tab.</p>
+        </div>
+      </div>
+
+      <!-- TIMER PANEL -->
+      <div class="panel" id="panel-timer">
+        <div class="card">
+          <div class="card-heading">Current speaker</div>
+          <div class="timer-big" id="timer-display">—</div>
+          <div class="timer-speaker" id="timer-speaker-name">No active speaker</div>
+          <div class="timer-progress"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+          <div class="btn-row">
+            <button class="btn-sm primary" onclick="resetTimer()" id="btn-reset">Reset</button>
+            <button class="btn-sm" onclick="togglePause()" id="btn-pause">Pause</button>
+            <button class="btn-sm danger" onclick="endSpeakerTurn()" id="btn-end">End turn</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-heading">Time limit per speaker</div>
+          <div class="limit-row">
+            <input type="range" min="1" max="10" value="2" id="limit-slider" oninput="updateLimit(this.value)">
+            <span class="limit-val" id="limit-label">2 min</span>
+          </div>
+          <p style="font-size:12px;color:var(--muted);margin-top:10px;line-height:1.5">A warning appears at 30 s remaining. Timer auto-resets when a new speaker is invited from the queue.</p>
+        </div>
+      </div>
+
+      <!-- POLLS PANEL -->
+      <div class="panel" id="panel-polls">
+        <div class="card" id="active-poll-card" style="display:none">
+          <div class="card-heading">Live poll</div>
+          <div id="poll-question-text" style="font-size:15px;font-weight:500;margin-bottom:14px"></div>
+          <div id="poll-options-display"></div>
+          <div class="poll-meta" id="poll-meta"></div>
+          <div class="btn-row" style="margin-top:14px" id="poll-vote-btns"></div>
+          <div class="btn-row" style="margin-top:8px" id="poll-mod-btns" style="display:none"></div>
+        </div>
+        <div class="card" id="no-poll-card">
+          <div class="empty-state">No active poll</div>
+        </div>
+        <div class="card" id="new-poll-card">
+          <div class="card-heading">Create poll</div>
+          <div class="new-poll-form">
+            <label>Question</label>
+            <input type="text" id="poll-q" placeholder="e.g. What framework do you prefer?">
+            <label>Options</label>
+            <div id="poll-opts-inputs">
+              <input type="text" class="poll-opt-input" placeholder="Option 1">
+              <input type="text" class="poll-opt-input" placeholder="Option 2">
+            </div>
+            <button class="add-opt-btn" onclick="addPollOption()">+ Add option</button>
+            <div class="btn-row">
+              <button class="btn-sm primary" onclick="launchPoll()">Launch poll</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SCHEDULE PANEL -->
+      <div class="panel" id="panel-schedule">
+        <div class="card">
+          <div class="card-heading">Upcoming stages</div>
+          <div id="events-list">
+            <div class="event-item">
+              <div class="event-date-col"><div class="event-day">22</div><div class="event-mon">May</div></div>
+              <div class="event-info"><div class="event-name">Design systems deep dive</div><div class="event-detail">7:00 PM · ~60 min · hosted by sasha_a</div></div>
+              <button class="rsvp-btn on" onclick="toggleRsvp(this)">✓ Going</button>
+            </div>
+            <div class="event-item">
+              <div class="event-date-col"><div class="event-day">25</div><div class="event-mon">May</div></div>
+              <div class="event-info"><div class="event-name">Open source Q&amp;A</div><div class="event-detail">3:00 PM · ~90 min · hosted by jake_dev</div></div>
+              <button class="rsvp-btn" onclick="toggleRsvp(this)">RSVP</button>
+            </div>
+            <div class="event-item">
+              <div class="event-date-col"><div class="event-day">1</div><div class="event-mon">Jun</div></div>
+              <div class="event-info"><div class="event-name">Web perf war stories</div><div class="event-detail">6:00 PM · ~45 min · hosted by m_lee</div></div>
+              <button class="rsvp-btn" onclick="toggleRsvp(this)">RSVP</button>
+            </div>
+          </div>
+        </div>
+        <div class="card" id="add-event-card" style="display:none">
+          <div class="card-heading">Schedule a stage</div>
+          <label>Event name</label>
+          <input type="text" id="evt-name" placeholder="e.g. Weekly dev chat">
+          <label>Date &amp; time</label>
+          <input type="text" id="evt-date" placeholder="e.g. Jun 5 at 7 PM">
+          <label>Estimated duration</label>
+          <input type="text" id="evt-dur" placeholder="e.g. 60 min">
+          <button class="btn-sm primary" onclick="addEvent()" style="margin-top:4px">Add to schedule</button>
+        </div>
+        <button class="btn-sm" id="toggle-add-event" onclick="toggleAddEvent()" style="margin:0">+ Schedule a stage</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="footer-bar">
+    <div class="footer-user">
+      <div class="avatar" id="footer-avatar" style="background:var(--accent);color:#fff;font-size:11px;font-weight:600"></div>
+      <div>
+        <div class="footer-username" id="footer-username"></div>
+        <div class="footer-role" id="footer-role"></div>
+      </div>
+    </div>
+    <div class="footer-spacer"></div>
+    <button class="footer-btn" id="btn-raise" onclick="toggleRaiseHand()">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 11V7a2 2 0 00-4 0v4M14 7V5a2 2 0 00-4 0v2M10 5v2M10 7V5a2 2 0 00-4 0v6l-1-1a2 2 0 00-3 3l4 4a6 6 0 0012 0v-3a2 2 0 00-4 0"/></svg>
+      Raise hand
+    </button>
+    <button class="footer-btn" id="btn-mic" onclick="toggleMic()">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/></svg>
+      <span id="mic-label">Mic off</span>
+    </button>
+    <button class="footer-btn leave" onclick="leaveStage()">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+      Leave
+    </button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Invite modal -->
+<div class="modal-overlay" id="invite-modal">
+  <div class="modal">
+    <h3 id="invite-modal-title">Invite to speak?</h3>
+    <p style="font-size:13px;color:var(--muted);line-height:1.5" id="invite-modal-body"></p>
+    <div class="modal-btns">
+      <button class="btn-sm primary" onclick="confirmInvite()">Invite to speak</button>
+      <button class="btn-sm" onclick="closeInviteModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let callFrame = null;
+let myRole = 'audience';    // 'audience' | 'moderator' | 'speaker'
+let myName = '';
+let myRoomName = '';
+let micOn = false;
+let handRaised = false;
+
+// Shared state (simulated via Daily app messages for multi-user sync)
+let queue = [];             // [{id, name, ts}]
+let timerSeconds = 120;
+let timerLimit = 120;
+let timerPaused = false;
+let timerInterval = null;
+let currentSpeakerId = null;
+let currentSpeakerName = '';
+let poll = null;            // {q, opts:[{text,votes}], total, closed, myVote}
+let participants = {};      // id -> {name, isMod, isSpeaker, muted, speaking}
+
+// ── LOBBY ──
+let selectedRole = 'audience';
+function selectRole(el) {
+  document.querySelectorAll('.role-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedRole = el.dataset.role;
+}
+
+async function joinStage() {
+  const name = document.getElementById('username-input').value.trim();
+  const room = document.getElementById('room-input').value.trim().toLowerCase().replace(/[^a-z0-9-]/g,'');
+  const err = document.getElementById('error-msg');
+  if (!name) { showErr('Enter your name'); return; }
+  if (!room) { showErr('Enter a room name'); return; }
+
+  const btn = document.getElementById('join-btn');
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  err.style.display = 'none';
+
+  try {
+    const res = await fetch('/api/room', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ roomName: room, userName: name, isModerator: selectedRole === 'moderator' })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Server error');
+    myName = name;
+    myRoomName = room;
+    myRole = selectedRole;
+    await startCall(data.url, data.token);
+  } catch(e) {
+    showErr(e.message);
+    btn.disabled = false;
+    btn.textContent = 'Join Stage';
+  }
+}
+function showErr(msg) {
+  const el = document.getElementById('error-msg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ── DAILY CALL ──
+async function startCall(url, token) {
+  callFrame = DailyIframe.createFrame({
+    showLeaveButton: false,
+    showFullscreenButton: false,
+    iframeStyle: { display: 'none' }    // audio only — no video UI
+  });
+
+  callFrame
+    .on('joined-meeting', onJoined)
+    .on('participant-joined', onParticipantJoined)
+    .on('participant-updated', onParticipantUpdated)
+    .on('participant-left', onParticipantLeft)
+    .on('app-message', onAppMessage)
+    .on('error', e => { showErr(e.errorMsg); });
+
+  await callFrame.join({ url, token, audioSource: false }); // start mic off
+}
+
+function onJoined(e) {
+  document.getElementById('lobby').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('header-stage-name').textContent = myRoomName;
+
+  // set footer
+  document.getElementById('footer-username').textContent = myName;
+  document.getElementById('footer-role').textContent = myRole;
+  document.getElementById('footer-avatar').textContent = initials(myName);
+
+  if (myRole === 'moderator') {
+    document.getElementById('mod-controls').style.display = 'block';
+    document.getElementById('new-poll-card').style.display = 'block';
+    document.getElementById('add-event-card');
+  } else {
+    document.getElementById('new-poll-card').style.display = 'none';
+  }
+
+  // hide raise-hand btn for moderators
+  if (myRole === 'moderator') {
+    document.getElementById('btn-raise').style.display = 'none';
+  }
+
+  addParticipant(e.participants.local);
+  renderParticipants();
+  startTimerClock();
+}
+
+function onParticipantJoined(e) { addParticipant(e.participant); renderParticipants(); updateCount(); }
+function onParticipantUpdated(e) { updateParticipant(e.participant); renderParticipants(); }
+function onParticipantLeft(e) {
+  delete participants[e.participant.session_id];
+  queue = queue.filter(q => q.id !== e.participant.session_id);
+  renderParticipants(); renderQueue(); updateCount();
+}
+
+function addParticipant(p) {
+  participants[p.session_id] = {
+    name: p.user_name || 'Guest',
+    isMod: !!p.owner,
+    isSpeaker: false,
+    muted: p.tracks?.audio?.state !== 'playable',
+    speaking: false,
+    local: !!p.local
+  };
+}
+function updateParticipant(p) {
+  if (!participants[p.session_id]) addParticipant(p);
+  participants[p.session_id].muted = p.tracks?.audio?.state !== 'playable';
+  participants[p.session_id].speaking = !!p.audio?.subscribed && !participants[p.session_id].muted;
+}
+
+// ── APP MESSAGES (multi-user state sync) ──
+function broadcast(msg) {
+  if (!callFrame) return;
+  callFrame.sendAppMessage(msg, '*');
+  handleMsg(msg); // apply locally too
+}
+function onAppMessage(e) { handleMsg(e.data); }
+
+function handleMsg(msg) {
+  switch(msg.type) {
+    case 'raise_hand':
+      if (!queue.find(q => q.id === msg.id)) {
+        queue.push({id: msg.id, name: msg.name, ts: Date.now()});
+        renderQueue();
+        toast(`✋ ${msg.name} raised their hand`);
+      }
+      break;
+    case 'lower_hand':
+      queue = queue.filter(q => q.id !== msg.id);
+      renderQueue();
+      break;
+    case 'invite_speaker':
+      if (participants[msg.id]) participants[msg.id].isSpeaker = true;
+      queue = queue.filter(q => q.id !== msg.id);
+      currentSpeakerId = msg.id;
+      currentSpeakerName = msg.name;
+      resetTimer();
+      renderParticipants(); renderQueue();
+      document.getElementById('timer-speaker-name').textContent = msg.name;
+      toast(`🎙 ${msg.name} is now speaking`);
+      // if it's me, unmute mic
+      const local = callFrame?.participants()?.local;
+      if (local && msg.id === local.session_id) {
+        callFrame.setLocalAudio(true);
+        micOn = true;
+        updateMicBtn();
+      }
+      break;
+    case 'end_speaker':
+      if (participants[currentSpeakerId]) participants[currentSpeakerId].isSpeaker = false;
+      currentSpeakerId = null; currentSpeakerName = '';
+      document.getElementById('timer-speaker-name').textContent = 'No active speaker';
+      document.getElementById('timer-display').textContent = '—';
+      document.getElementById('timer-display').className = 'timer-big';
+      renderParticipants();
+      const local2 = callFrame?.participants()?.local;
+      if (local2 && msg.id === local2.session_id) {
+        callFrame.setLocalAudio(false);
+        micOn = false; updateMicBtn();
+      }
+      break;
+    case 'mute_all':
+      callFrame?.setLocalAudio(false);
+      micOn = false; updateMicBtn();
+      break;
+    case 'poll_launch':
+      poll = {q: msg.q, opts: msg.opts.map(o=>({text:o,votes:0})), total:0, closed:false, myVote:-1};
+      renderPoll();
+      toast(`📊 New poll: ${msg.q}`);
+      break;
+    case 'poll_vote':
+      if (poll && !poll.closed && msg.opt >= 0 && msg.opt < poll.opts.length) {
+        poll.opts[msg.opt].votes++;
+        poll.total++;
+        renderPoll();
+      }
+      break;
+    case 'poll_end':
+      if (poll) { poll.closed = true; renderPoll(); }
+      break;
+  }
+}
+
+// ── MIC / HAND ──
+async function toggleMic() {
+  if (!callFrame) return;
+  micOn = !micOn;
+  await callFrame.setLocalAudio(micOn);
+  updateMicBtn();
+}
+function updateMicBtn() {
+  const btn = document.getElementById('btn-mic');
+  const lbl = document.getElementById('mic-label');
+  if (micOn) {
+    btn.classList.add('mic-on');
+    lbl.textContent = 'Mic on';
+  } else {
+    btn.classList.remove('mic-on');
+    lbl.textContent = 'Mic off';
+  }
+}
+
+function toggleRaiseHand() {
+  const local = callFrame?.participants()?.local;
+  if (!local) return;
+  if (!handRaised) {
+    handRaised = true;
+    document.getElementById('btn-raise').classList.add('active');
+    broadcast({type:'raise_hand', id: local.session_id, name: myName});
+    toast('✋ Hand raised');
+  } else {
+    handRaised = false;
+    document.getElementById('btn-raise').classList.remove('active');
+    broadcast({type:'lower_hand', id: local.session_id});
+    toast('Hand lowered');
+  }
+}
+
+// ── QUEUE ──
+function renderQueue() {
+  const el = document.getElementById('queue-list');
+  if (!queue.length) { el.innerHTML = '<div class="empty-state">No hands raised yet</div>'; return; }
+  el.innerHTML = queue.map((q,i) => `
+    <div class="queue-item">
+      <span class="queue-pos">${i+1}</span>
+      <div class="avatar" style="background:${avatarColor(q.name)};color:#fff;font-size:10px;width:24px;height:24px">${initials(q.name)}</div>
+      <span class="queue-name">${esc(q.name)}</span>
+      <span class="queue-time">${timeAgo(q.ts)}</span>
+      ${myRole==='moderator' ? `<button class="action-btn approve" onclick="inviteSpeaker('${q.id}','${esc(q.name)}')">Invite</button>
+        <button class="action-btn deny" onclick="removeFromQueue('${q.id}')">✕</button>` : ''}
+    </div>`).join('');
+}
+
+let invitePending = null;
+function inviteSpeaker(id, name) {
+  invitePending = {id, name};
+  document.getElementById('invite-modal-title').textContent = `Invite ${name} to speak?`;
+  document.getElementById('invite-modal-body').textContent = `${name} will be unmuted and their speaker timer will start.`;
+  document.getElementById('invite-modal').classList.add('open');
+}
+function confirmInvite() {
+  if (!invitePending) return;
+  broadcast({type:'invite_speaker', id: invitePending.id, name: invitePending.name});
+  closeInviteModal();
+}
+function closeInviteModal() { document.getElementById('invite-modal').classList.remove('open'); invitePending = null; }
+function removeFromQueue(id) { queue = queue.filter(q=>q.id!==id); renderQueue(); }
+function clearQueue() { queue = []; renderQueue(); }
+function muteAll() { broadcast({type:'mute_all'}); }
+
+// ── PARTICIPANTS ──
+function renderParticipants() {
+  const speakers = Object.entries(participants).filter(([,p])=>p.isMod||p.isSpeaker);
+  const audience = Object.entries(participants).filter(([,p])=>!p.isMod&&!p.isSpeaker);
+  document.getElementById('speakers-list').innerHTML = speakers.length ? speakers.map(([id,p])=>participantRow(id,p)).join('') : '<div style="font-size:12px;color:var(--muted);padding:4px 6px">None yet</div>';
+  document.getElementById('audience-list').innerHTML = audience.length ? audience.map(([id,p])=>participantRow(id,p)).join('') : '<div style="font-size:12px;color:var(--muted);padding:4px 6px">None yet</div>';
+  updateCount();
+}
+function participantRow(id, p) {
+  const inQueue = queue.find(q=>q.id===id);
+  const badge = p.isMod ? '<span class="p-badge badge-mod">mod</span>' : inQueue ? '<span class="p-badge badge-hand">✋</span>' : p.muted ? '<span class="p-badge badge-muted">🔇</span>' : '';
+  return `<div class="participant-row">
+    <div class="avatar ${p.speaking?'speaking':''}" style="background:${avatarColor(p.name)};color:#fff;font-size:10px;font-weight:600">
+      <div class="speaking-ring"></div>
+      ${initials(p.name)}
+    </div>
+    <span class="p-name">${esc(p.name)}${p.local?' (you)':''}</span>
+    ${badge}
+  </div>`;
+}
+function updateCount() {
+  const n = Object.keys(participants).length;
+  document.getElementById('header-count').textContent = `${n} listening`;
+}
+
+// ── TIMER ──
+function startTimerClock() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (!currentSpeakerId || timerPaused) return;
+    timerSeconds--;
+    if (timerSeconds < 0) timerSeconds = 0;
+    updateTimerDisplay();
+    if (timerSeconds === 0 && myRole === 'moderator') {
+      endSpeakerTurn();
+    }
+  }, 1000);
+}
+function updateTimerDisplay() {
+  const m = Math.floor(timerSeconds/60);
+  const s = timerSeconds % 60;
+  const el = document.getElementById('timer-display');
+  const bar = document.getElementById('timer-bar');
+  el.textContent = `${m}:${s.toString().padStart(2,'0')}`;
+  const pct = timerLimit > 0 ? Math.round(timerSeconds / timerLimit * 100) : 0;
+  bar.style.width = pct + '%';
+  const warn = timerSeconds <= 30 && timerSeconds > 0;
+  const exp = timerSeconds === 0;
+  el.className = 'timer-big' + (exp?' expired':warn?' warning':'');
+  bar.className = 'timer-bar' + (exp?' expired':warn?' warning':'');
+}
+function resetTimer() {
+  timerSeconds = timerLimit;
+  timerPaused = false;
+  document.getElementById('btn-pause').textContent = 'Pause';
+  updateTimerDisplay();
+}
+function togglePause() {
+  timerPaused = !timerPaused;
+  document.getElementById('btn-pause').textContent = timerPaused ? 'Resume' : 'Pause';
+}
+function endSpeakerTurn() {
+  const id = currentSpeakerId;
+  broadcast({type:'end_speaker', id});
+}
+function updateLimit(val) {
+  timerLimit = parseInt(val) * 60;
+  timerSeconds = timerLimit;
+  document.getElementById('limit-label').textContent = val + ' min';
+  updateTimerDisplay();
+}
+
+// ── POLLS ──
+function renderPoll() {
+  const hasActive = poll && !poll.closed;
+  document.getElementById('active-poll-card').style.display = poll ? 'block' : 'none';
+  document.getElementById('no-poll-card').style.display = poll ? 'none' : 'block';
+  if (!poll) return;
+
+  document.getElementById('poll-question-text').textContent = poll.q;
+  const optsEl = document.getElementById('poll-options-display');
+  const colors = ['#7c6aff','#34d399','#fbbf24','#f87171','#a78bfa'];
+  optsEl.innerHTML = poll.opts.map((o,i)=>{
+    const pct = poll.total > 0 ? Math.round(o.votes/poll.total*100) : 0;
+    return `<div class="poll-option-row">
+      <div class="poll-label-row"><span class="poll-opt-text">${esc(o.text)}</span><span class="poll-pct">${pct}%</span></div>
+      <div class="poll-track"><div class="poll-fill" style="width:${pct}%;background:${colors[i%colors.length]}"></div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('poll-meta').textContent = `${poll.total} vote${poll.total!==1?'s':''} · ${poll.closed?'closed':'live'}`;
+
+  // vote buttons (audience, not voted, not closed)
+  const vBtns = document.getElementById('poll-vote-btns');
+  if (!poll.closed && poll.myVote === -1 && myRole !== 'moderator') {
+    vBtns.innerHTML = poll.opts.map((o,i)=>`<button class="btn-sm" onclick="castVote(${i})">${esc(o.text)}</button>`).join('');
+  } else {
+    vBtns.innerHTML = '';
+  }
+
+  // mod buttons
+  const mBtns = document.getElementById('poll-mod-btns');
+  if (myRole === 'moderator' && !poll.closed) {
+    mBtns.style.display = 'flex';
+    mBtns.innerHTML = '<button class="btn-sm danger" onclick="endPoll()">End poll</button>';
+  } else { mBtns.style.display = 'none'; }
+}
+
+function addPollOption() {
+  const wrap = document.getElementById('poll-opts-inputs');
+  const n = wrap.querySelectorAll('input').length + 1;
+  if (n > 5) return;
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.className = 'poll-opt-input'; inp.placeholder = `Option ${n}`;
+  wrap.appendChild(inp);
+}
+function launchPoll() {
+  const q = document.getElementById('poll-q').value.trim();
+  const opts = [...document.querySelectorAll('.poll-opt-input')].map(i=>i.value.trim()).filter(Boolean);
+  if (!q || opts.length < 2) { toast('Need a question and at least 2 options'); return; }
+  broadcast({type:'poll_launch', q, opts});
+}
+function castVote(i) {
+  if (!poll || poll.myVote !== -1 || poll.closed) return;
+  poll.myVote = i;
+  broadcast({type:'poll_vote', opt: i});
+}
+function endPoll() { broadcast({type:'poll_end'}); }
+
+// ── SCHEDULE ──
+function toggleRsvp(btn) {
+  btn.classList.toggle('on');
+  btn.textContent = btn.classList.contains('on') ? '✓ Going' : 'RSVP';
+}
+function toggleAddEvent() {
+  const c = document.getElementById('add-event-card');
+  c.style.display = c.style.display === 'none' ? 'block' : 'none';
+}
+function addEvent() {
+  const name = document.getElementById('evt-name').value.trim();
+  const date = document.getElementById('evt-date').value.trim();
+  const dur = document.getElementById('evt-dur').value.trim();
+  if (!name || !date) return;
+  const list = document.getElementById('events-list');
+  const div = document.createElement('div'); div.className = 'event-item';
+  div.innerHTML = `<div class="event-date-col"><div class="event-day">—</div><div class="event-mon">—</div></div>
+    <div class="event-info"><div class="event-name">${esc(name)}</div><div class="event-detail">${esc(date)}${dur?' · '+esc(dur):''} · hosted by ${esc(myName)}</div></div>
+    <button class="rsvp-btn on" onclick="toggleRsvp(this)">✓ Going</button>`;
+  list.appendChild(div);
+  document.getElementById('evt-name').value=''; document.getElementById('evt-date').value=''; document.getElementById('evt-dur').value='';
+  toggleAddEvent();
+  toast('Event added!');
+}
+
+// ── LEAVE ──
+async function leaveStage() {
+  if (callFrame) { await callFrame.leave(); callFrame.destroy(); callFrame = null; }
+  participants = {}; queue = []; poll = null;
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('lobby').style.display = 'flex';
+  document.getElementById('join-btn').disabled = false;
+  document.getElementById('join-btn').textContent = 'Join Stage';
+}
+
+// ── TABS ──
+function switchTab(id, el) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('panel-'+id).classList.add('active');
+}
+
+// ── TOAST ──
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.classList.remove('show'), 3000);
+}
+
+// ── UTILS ──
+function initials(name) { return name.split(/[\s_-]/).map(w=>w[0]?.toUpperCase()||'').join('').slice(0,2)||'?'; }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function timeAgo(ts) { const s=Math.floor((Date.now()-ts)/1000); return s<60?s+'s ago':Math.floor(s/60)+'m ago'; }
+const COLORS = ['#7c6aff','#34d399','#f87171','#fbbf24','#60a5fa','#f472b6','#a78bfa'];
+function avatarColor(name) { let h=0; for(let c of name) h=(h*31+c.charCodeAt(0))&0xffff; return COLORS[h%COLORS.length]; }
+
+// re-render queue times every 30s
+setInterval(renderQueue, 30000);
+</script>
+</body>
+</html>
